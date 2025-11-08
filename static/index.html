@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spam Mail Classifier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-gray-800 mb-2">📧 Spam Classifier</h1>
+            <p class="text-gray-600">AI-powered email spam detection using Naive Bayes</p>
+            <p class="text-sm text-gray-500 mt-1">98.85% accuracy</p>
+        </div>
+
+        <!-- Main Card -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <!-- Input Section -->
+            <div class="mb-6">
+                <label for="email-input" class="block text-lg font-semibold text-gray-700 mb-3">
+                    Email Content
+                </label>
+                <textarea 
+                    id="email-input" 
+                    rows="8" 
+                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                    placeholder="Paste your email content here...&#10;&#10;Example:&#10;Congratulations! You've won $1000. Click here to claim now!"
+                ></textarea>
+            </div>
+
+            <!-- Quick Examples -->
+            <div class="mb-6">
+                <p class="text-sm font-semibold text-gray-600 mb-2">Quick Examples:</p>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="setExample(0)" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded-full transition">
+                        Ham Example 1
+                    </button>
+                    <button onclick="setExample(1)" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded-full transition">
+                        Ham Example 2
+                    </button>
+                    <button onclick="setExample(2)" class="text-xs bg-red-200 hover:bg-red-300 px-3 py-1.5 rounded-full transition">
+                        Spam Example 1
+                    </button>
+                    <button onclick="setExample(3)" class="text-xs bg-red-200 hover:bg-red-300 px-3 py-1.5 rounded-full transition">
+                        Spam Example 2
+                    </button>
+                </div>
+            </div>
+
+            <!-- Classify Button -->
+            <button 
+                id="classify-btn"
+                onclick="classifyEmail()"
+                class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition duration-200 shadow-lg"
+            >
+                🔍 Classify Email
+            </button>
+
+            <!-- Result Section -->
+            <div id="result-container" class="mt-8 hidden">
+                <div id="result-card" class="rounded-xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-2xl font-bold text-white">Result</h3>
+                        <span id="result-icon" class="text-5xl"></span>
+                    </div>
+                    <div class="space-y-3 text-white">
+                        <p class="text-lg">
+                            <span class="font-semibold">Classification:</span> 
+                            <span id="result-text" class="text-3xl font-bold ml-2"></span>
+                        </p>
+                        <p class="text-sm opacity-90">
+                            <span class="font-semibold">Confidence:</span> 
+                            <span id="confidence" class="text-xl font-bold ml-2"></span>
+                        </p>
+                        
+                        <!-- Probability Bars -->
+                        <div class="mt-4 space-y-2">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Ham (Not Spam)</span>
+                                    <span id="ham-percent"></span>
+                                </div>
+                                <div class="bg-white bg-opacity-30 rounded-full h-3">
+                                    <div id="ham-bar" class="bg-white h-3 rounded-full transition-all duration-500"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Spam</span>
+                                    <span id="spam-percent"></span>
+                                </div>
+                                <div class="bg-white bg-opacity-30 rounded-full h-3">
+                                    <div id="spam-bar" class="bg-white h-3 rounded-full transition-all duration-500"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div id="error-container" class="mt-8 hidden">
+                <div class="bg-red-100 border-2 border-red-400 text-red-700 px-6 py-4 rounded-xl">
+                    <p class="font-bold">Error</p>
+                    <p id="error-text"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Footer -->
+        <div class="mt-8 text-center text-gray-600 text-sm">
+            <p>Powered by Naive Bayes Algorithm • Trained on 5,572 emails</p>
+        </div>
+    </div>
+
+    <script>
+        const examples = [
+            "Hello there! Can we get together to watch the game at my place tonight? Let me know if you're free.",
+            "Hey, just checking if we're still on for lunch tomorrow at 1 PM? Looking forward to catching up!",
+            "URGENT! You have won $10,000 in our lottery! Click here immediately to claim your prize before it expires!",
+            "Congratulations! You've been selected for a FREE iPhone 15! Limited time offer. Reply NOW with your credit card details to claim."
+        ];
+
+        function setExample(index) {
+            document.getElementById('email-input').value = examples[index];
+        }
+
+        async function classifyEmail() {
+            const emailText = document.getElementById('email-input').value.trim();
+            
+            if (!emailText) {
+                showError('Please enter email content to classify');
+                return;
+            }
+
+            const btn = document.getElementById('classify-btn');
+            btn.disabled = true;
+            btn.textContent = '🔄 Classifying...';
+            
+            hideResult();
+            hideError();
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: emailText })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Classification failed');
+                }
+
+                showResult(data);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Classify Email';
+            }
+        }
+
+        function showResult(data) {
+            const container = document.getElementById('result-container');
+            const card = document.getElementById('result-card');
+            const resultText = document.getElementById('result-text');
+            const resultIcon = document.getElementById('result-icon');
+            const confidence = document.getElementById('confidence');
+            
+            container.classList.remove('hidden');
+            
+            if (data.is_spam) {
+                card.className = 'rounded-xl p-6 shadow-lg bg-gradient-to-r from-red-500 to-pink-500';
+                resultText.textContent = 'SPAM ⚠️';
+                resultIcon.textContent = '🚫';
+            } else {
+                card.className = 'rounded-xl p-6 shadow-lg bg-gradient-to-r from-green-500 to-emerald-500';
+                resultText.textContent = 'HAM ✓';
+                resultIcon.textContent = '✅';
+            }
+            
+            confidence.textContent = data.confidence.toFixed(2) + '%';
+            
+            const hamPercent = (data.probability.ham * 100).toFixed(2);
+            const spamPercent = (data.probability.spam * 100).toFixed(2);
+            
+            document.getElementById('ham-percent').textContent = hamPercent + '%';
+            document.getElementById('spam-percent').textContent = spamPercent + '%';
+            document.getElementById('ham-bar').style.width = hamPercent + '%';
+            document.getElementById('spam-bar').style.width = spamPercent + '%';
+        }
+
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            const errorText = document.getElementById('error-text');
+            
+            errorText.textContent = message;
+            container.classList.remove('hidden');
+        }
+
+        function hideResult() {
+            document.getElementById('result-container').classList.add('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('error-container').classList.add('hidden');
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('email-input').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                classifyEmail();
+            }
+        });
+    </script>
+</body>
+</html>
